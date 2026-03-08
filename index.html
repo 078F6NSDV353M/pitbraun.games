@@ -1,15 +1,18 @@
-<!DOCTYPE html> 
+<!DOCTYPE html>
 <html lang="en">
+
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
 <title>PitBraun Games</title>
 
 <style>
+
 body{
 margin:0;
 background:#0f0f10;
-color:#ffffff;
+color:white;
 font-family:system-ui, Arial, sans-serif;
 display:flex;
 align-items:center;
@@ -19,34 +22,48 @@ text-align:center;
 }
 
 .container{
-max-width:600px;
+max-width:700px;
 padding:40px;
 }
 
-h1{
-font-size:48px;
+.logo{
+font-size:54px;
+font-weight:800;
+letter-spacing:2px;
 margin-bottom:10px;
-letter-spacing:1px;
+}
+
+.logo span{
+color:#ff7a00;
 }
 
 .subtitle{
 opacity:0.8;
-margin-bottom:30px;
+margin-bottom:40px;
+font-size:18px;
 }
 
 .coming{
+font-size:20px;
 opacity:0.6;
-font-size:18px;
 margin-top:20px;
 }
 
-.stub-image{
-width:100%;
-max-width:420px;
-margin:30px auto;
-display:block;
-border-radius:12px;
+.loader{
+margin:40px auto;
+width:60px;
+height:60px;
+border:4px solid #333;
+border-top:4px solid #ff7a00;
+border-radius:50%;
+animation:spin 1.2s linear infinite;
 }
+
+@keyframes spin{
+0%{ transform:rotate(0deg); }
+100%{ transform:rotate(360deg); }
+}
+
 </style>
 </head>
 
@@ -54,13 +71,15 @@ border-radius:12px;
 
 <div class="container">
 
-<h1>PitBraun Games</h1>
+<div class="logo">
+Pit<span>Braun</span> Games
+</div>
 
 <div class="subtitle">
 Independent Game Development Studio
 </div>
 
-<img src="stub.jpg" class="stub-image" alt="Coming soon">
+<div class="loader"></div>
 
 <div class="coming">
 Website coming soon
