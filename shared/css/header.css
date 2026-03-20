@@ -1,0 +1,80 @@
+.header-section{
+  width:100%;
+  /* margin-bottom:20px; */
+}
+
+.header-inner{
+  min-height:120px;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  gap:16px;
+}
+
+.logo-link{
+  display:inline-block;
+  text-decoration:none;
+}
+
+.logo-img{
+  display:block;
+  width:100%;
+  max-width:320px;
+  height:auto;
+  /* animation:logoPulse 4s ease-in-out infinite; */
+}
+
+.logo-block{
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  gap:0px;
+}
+
+.nav{
+  display:flex;
+  gap:16px;
+  justify-content:center;
+  flex-wrap:wrap;
+  /* margin-top:-20px; */
+}
+
+.nav-link{
+  text-decoration:none;
+  color:var(--color-border);
+  font-size:16px;
+  transition:opacity 0.2s ease;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  height:28px;
+  padding:0px 6px 0px;
+  border:1px solid transparent;
+  border-radius:6px;
+}
+
+.nav-link:hover{
+  opacity:0.7;
+}
+
+.nav-link.active{
+  border-color:var(--color-border);
+}
+
+/* .subtitle{
+  margin-top:-4px;
+} */
+
+.coming{        /* Limits the width of the text under the logo */
+  width:100%;
+  max-width:320px;
+  text-align:center;
+}
+
+/*
+@keyframes logoPulse{
+  0%{transform:scale(1);}
+  50%{transform:scale(1.01);}
+  100%{transform:scale(1);}
+}
+*/

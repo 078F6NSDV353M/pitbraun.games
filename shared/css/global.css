@@ -1,0 +1,66 @@
+body{
+  min-height:100vh;
+
+  background:
+    radial-gradient(rgba(255,255,255,0.02) 1px, transparent 1px),
+    linear-gradient(
+      to right,
+      #000000 0%,
+      #2a0d00 50%,
+      #000000 100%
+    );
+
+  background-size:3px 3px, 100% 100%;
+
+  color:var(--color-text);
+  font-family:'Roboto', sans-serif;
+  text-align:center;
+}
+
+html{
+  overflow-y: scroll;
+  scrollbar-gutter: stable;
+}
+
+/* 
+:root{
+  --grid-small: 20px;
+  --grid-big: 100px;
+
+  --grid-small-color: rgba(255,255,255,0.04);
+  --grid-big-color: rgba(255,255,255,0.10);
+}
+
+body{
+  min-height:100vh;
+  position:relative;
+}
+
+body::before{
+  content:"";
+  position:absolute;
+  inset:0;
+  pointer-events:none;
+
+  background:
+    linear-gradient(to right, var(--grid-big-color) 1px, transparent 1px),
+    linear-gradient(to bottom, var(--grid-big-color) 1px, transparent 1px),
+    linear-gradient(to right, var(--grid-small-color) 1px, transparent 1px),
+    linear-gradient(to bottom, var(--grid-small-color) 1px, transparent 1px);
+
+  background-size:
+    var(--grid-big) var(--grid-big),
+    var(--grid-big) var(--grid-big),
+    var(--grid-small) var(--grid-small),
+    var(--grid-small) var(--grid-small);
+
+  background-position:
+    calc(50% - var(--grid-big) / 2) calc(50% - var(--grid-big) / 2),
+    calc(50% - var(--grid-big) / 2) calc(50% - var(--grid-big) / 2),
+    calc(50% - var(--grid-small) / 2) calc(50% - var(--grid-small) / 2),
+    calc(50% - var(--grid-small) / 2) calc(50% - var(--grid-small) / 2);
+
+  z-index:0;
+}
+*/
+

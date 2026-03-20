@@ -1,0 +1,13 @@
+@media (max-width:768px){
+  .logo-img{
+    max-width:260px;
+  }
+
+  .nav{
+    gap:12px;
+  }
+
+  .nav-link{
+    font-size:15px;
+  }
+}
