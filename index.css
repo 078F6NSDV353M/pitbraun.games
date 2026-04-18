@@ -1,7 +1,177 @@
 .game-preview{
-  max-width:500px;
   width:100%;
   height:auto;
-  border-radius:20px;
+  display:block;
+  margin-top:15px;
+  border:none;
+  border-radius:0;
+}
+
+hr{
+  width:100%;
+  max-width:700px;
+  height:2px;
+  border:none;
+  background:var(--color-text);
+  opacity:0.2;
+  margin:30px auto;
+}
+
+.news-list{
+  display:flex;
+  flex-direction:column;
+  gap:30px;
+}
+
+.news-card{
+  width:100%;
+  text-align:center;
+  padding:20px;
   border:1px solid var(--color-text);
+  border-radius:12px;
+  background:rgba(255,255,255,0.02);
+}
+
+.news-meta{
+  margin-bottom:10px;
+  opacity:0.6;
+  font-size:14px;
+}
+
+.news-title{
+  margin:0 0 10px 0;
+}
+
+.news-carousel{
+  position:relative;
+  width:100%;
+  margin-top:15px;
+}
+
+.carousel-viewport{
+  position:relative;
+  width:100%;
+  overflow:hidden;
+  border-radius:12px;
+}
+
+.carousel-image{
+  display:none;
+  width:100%;
+  height:auto;
+}
+
+.carousel-image.active{
+  display:block;
+}
+
+.carousel-btn{
+  position:absolute;
+  top:50%;
+  transform:translateY(-50%);
+  z-index:2;
+  width:44px;
+  height:44px;
+  border:none;
+  border-radius:50%;
+  cursor:pointer;
+}
+
+.carousel-btn-prev{
+  left:10px;
+}
+
+.carousel-btn-next{
+  right:10px;
+}
+
+/* --- PREVIEW CAROUSEL (уменьшаем) --- */
+.carousel-viewport{
+  position:relative;
+  width:100%;
+  height:420px;
+  overflow:hidden;
+  border-radius:12px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+}
+
+.carousel-image{
+  display:none;
+  max-width:100%;
+  max-height:100%;
+  width:auto;
+  height:auto;
+  object-fit:contain;
+}
+
+.carousel-image.active{
+  display:block;
+}
+
+
+/* --- OVERLAY (fullscreen) --- */
+.carousel-overlay{
+  position:fixed;
+  top:0;
+  left:0;
+  width:100%;
+  height:100%;
+  background:rgba(0,0,0,0.9);
+  display:none;
+  align-items:center;
+  justify-content:center;
+  z-index:9999;
+}
+
+.overlay-image{
+  max-width:90%;
+  max-height:90%;
+  object-fit:contain;
+}
+
+.overlay-close,
+.overlay-prev,
+.overlay-next{
+  position:absolute;
+  background:none;
+  border:none;
+  color:var(--color-text);
+  font-size:40px;
+  cursor:pointer;
+}
+
+.overlay-close{
+  top:20px;
+  right:30px;
+}
+
+.overlay-prev{
+  left:30px;
+  top:50%;
+  transform:translateY(-50%);
+}
+
+.overlay-next{
+  right:30px;
+  top:50%;
+  transform:translateY(-50%);
+}
+
+.download-btn{
+  display:inline-block;
+  margin-top:10px;
+  padding:12px 20px;
+  border:1px solid var(--color-text);
+  border-radius:10px;
+  color:var(--color-text);
+  text-decoration:none;
+  font-weight:500;
+  transition:opacity 0.2s ease, transform 0.2s ease;
+}
+
+.download-btn:hover{
+  opacity:0.8;
+  transform:translateY(-1px);
 }
