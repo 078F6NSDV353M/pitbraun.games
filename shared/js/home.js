@@ -8,27 +8,49 @@ document.addEventListener("DOMContentLoaded", () => {
 
     let index = 0;
 
-    function showSlide(i){
-      images.forEach(img => img.classList.remove('active'));
-      images[i].classList.add('active');
+    function updateCarousel(){
+      images.forEach(img => {
+        img.classList.remove('active', 'prev', 'next');
+      });
+
+      const prevIndex = (index - 1 + images.length) % images.length;
+      const nextIndex = (index + 1) % images.length;
+
+      images[index].classList.add('active');
+      images[prevIndex].classList.add('prev');
+      images[nextIndex].classList.add('next');
     }
 
-    prevBtn.addEventListener('click', () => {
+    function showPrev(){
       index = (index - 1 + images.length) % images.length;
-      showSlide(index);
-    });
+      updateCarousel();
+    }
 
-    nextBtn.addEventListener('click', () => {
+    function showNext(){
       index = (index + 1) % images.length;
-      showSlide(index);
-    });
+      updateCarousel();
+    }
 
-    // --- OPEN OVERLAY ON CLICK ---
+    prevBtn.addEventListener('click', showPrev);
+    nextBtn.addEventListener('click', showNext);
+
     images.forEach((img, i) => {
       img.addEventListener('click', () => {
+        if (img.classList.contains('prev')) {
+          showPrev();
+          return;
+        }
+
+        if (img.classList.contains('next')) {
+          showNext();
+          return;
+        }
+
         openOverlay(images, i);
       });
     });
+
+    updateCarousel();
   });
 
 
