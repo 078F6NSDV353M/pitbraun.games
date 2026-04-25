@@ -70,11 +70,26 @@ hr{
   top:50%;
   transform:translateY(-50%);
   z-index:2;
-  width:44px;
-  height:44px;
+  background:none;
   border:none;
-  border-radius:50%;
+  color:var(--color-text);
+  font-size:42px;
   cursor:pointer;
+  padding:10px;
+  line-height:1;
+  transition:opacity 0.2s ease, transform 0.2s ease;
+}
+
+.carousel-btn:hover{
+  opacity:0.7;
+}
+
+.carousel-btn-prev:hover{
+  transform:translateY(-50%) translateX(-4px);
+}
+
+.carousel-btn-next:hover{
+  transform:translateY(-50%) translateX(4px);
 }
 
 .carousel-btn-prev{
