@@ -10,8 +10,8 @@ const WIDTH = canvas.width;
 const HEIGHT = canvas.height;
 
 /* Grid */
-const GRID_COLUMNS = 12;
-const GRID_ROWS = 8;
+const GRID_COLUMNS = 13;
+const GRID_ROWS = 9;
 
 /* Block */
 const BLOCK_GAP = 0;
