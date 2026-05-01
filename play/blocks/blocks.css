@@ -1,0 +1,108 @@
+.game-wrap{
+  width:min(94vw, 520px);
+  max-height:100%;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  overflow:hidden;
+}
+
+.blocks-title{
+  margin:0 0 2px;
+  font-size:48px;
+  line-height:1;
+  font-weight:bold;
+  letter-spacing:5px;
+  text-align:center;
+}
+
+.highscore-label{
+  margin:0;
+  font-size:14px;
+  line-height:1.1;
+  font-weight:bold;
+  text-align:center;
+}
+
+.highscore-value{
+  margin:0 0 4px;
+  font-size:28px;
+  line-height:1;
+  font-weight:bold;
+  text-align:center;
+}
+
+.hud{
+  width:100%;
+  display:flex;
+  justify-content:space-between;
+  margin:0 0 6px;
+  font-size:14px;
+  line-height:1.2;
+}
+
+canvas{
+  width:auto;
+  height:auto;
+  max-width:100%;
+  max-height:calc(100dvh - 245px);
+  display:block;
+  border:2px solid #374151;
+  background:#030712;
+  touch-action:none;
+}
+
+.build-info{
+  width:100%;
+  margin:4px 0 0;
+  padding-top:4px;
+  font-size:10px;
+  line-height:1.2;
+  opacity:0.6;
+  text-align:left;
+}
+
+.controls-info{
+  margin-top:4px;
+  font-size:10px;
+  line-height:1.2;
+  opacity:0.7;
+  text-align:center;
+}
+
+@media (min-width: 768px){
+  .blocks-title{
+    font-size:64px;
+    letter-spacing:6px;
+  }
+
+  .highscore-label{
+    font-size:20px;
+  }
+
+  .highscore-value{
+    font-size:44px;
+  }
+
+  .hud{
+    font-size:18px;
+    margin-bottom:10px;
+  }
+
+  canvas{
+    width:100%;
+    height:auto;
+    max-height:none;
+  }
+
+  .build-info{
+    font-size:12px;
+    margin-top:6px;
+    padding-top:10px;
+  }
+
+  .controls-info{
+    font-size:12px;
+    margin-top:6px;
+  }
+}

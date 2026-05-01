@@ -14,19 +14,6 @@
   gap:30px;
 }
 
-/* #footer{
-  width:100%;
-  margin-top:auto;
-} */
-
-/*
-.container{
-  width:100%;
-  max-width:700px;
-  margin:0px auto 0;
-}
-*/
-
 .section{
   margin-top:var(--section-space);
 }
@@ -57,6 +44,6 @@ p + p{
 }
 
 .social-links,
-.games-grid{
+.releases-grid{
   margin-top:var(--block-space);
 }

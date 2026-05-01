@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Blocks / PitBraun Games</title>
+
+  <link rel="stylesheet" href="../../shared/css/reset.css">
+  <link rel="stylesheet" href="../../shared/css/variables.css">
+  <link rel="stylesheet" href="../../shared/css/global.css">
+  <link rel="stylesheet" href="../../shared/css/header.css">
+  <link rel="stylesheet" href="../../shared/css/footer.css">
+  <link rel="stylesheet" href="../../shared/css/responsive.css">
+
+  <link rel="stylesheet" href="../css/game-layout.css">
+  <link rel="stylesheet" href="./blocks.css">
+
+  <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
+  <link rel="icon" href="/assets/icons/favicon.png" type="image/png">
+</head>
+
+<body class="game-page">
+
+  <header class="game-header">
+    <div class="game-header__inner">
+
+      <a href="/" class="game-header__logo">
+        <img src="/assets/images/play_logo_small.png" alt="PitBraun Games">
+      </a>
+
+      <nav class="game-header__nav">
+        <a href="/" class="game-header__link">Home</a>
+        <a href="/about/" class="game-header__link">About</a>
+        <a href="/releases/" class="game-header__link">Releases</a>
+        <a href="/play/" class="game-header__link active">Play</a>
+        <a href="/contacts/" class="game-header__link">Contacts</a>
+      </nav>
+
+    </div>
+  </header>
+
+  <main class="game-main">
+    <section class="game-stage">
+      <div class="game-wrap">
+
+        <div class="blocks-title">
+          <span style="color:#00ff00;">B</span><span style="color:#ff0000;">L</span><span style="color:#0000ff;">O</span><span style="color:#ffff00;">C</span><span style="color:#ff1493;">K</span><span style="color:#00ffff;">S</span>
+        </div>
+
+        <div class="highscore-label">
+          HIGH SCORE
+        </div>
+
+        <div class="highscore-value">
+          <span id="highscore">0</span>
+        </div>
+
+        <div class="hud">
+          <div>Score: <span id="score">0</span></div>
+          <div>Level: <span id="level">1</span></div>
+        </div>
+
+        <canvas id="game" width="480" height="640"></canvas>
+
+        <div class="build-info">
+          Build: <span id="build">67</span>
+        </div>
+
+        <div class="controls-info">
+          Click / Tap / Space — Start / Restart<br>
+          Space / Double Tap — Pause
+        </div>
+
+      </div>
+    </section>
+  </main>
+
+  <footer class="game-footer">
+    <p>
+      Some images on this website are for illustrative purposes only<br>
+      and may not represent actual gameplay.<br>
+      © 2026 PitBraun Games
+    </p>
+  </footer>
+
+  <script src="./blocks.js"></script>
+
+</body>
+</html>
