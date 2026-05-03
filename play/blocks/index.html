@@ -41,36 +41,41 @@
 
   <main class="game-main">
     <section class="game-stage">
-      <div class="game-wrap">
+      <div class="game-scale">
+        <div class="game-wrap">
 
-        <div class="blocks-title">
-          <span style="color:#00ff00;">B</span><span style="color:#ff0000;">L</span><span style="color:#0000ff;">O</span><span style="color:#ffff00;">C</span><span style="color:#ff1493;">K</span><span style="color:#00ffff;">S</span>
+          <div class="blocks-title">
+            <img src="/assets/images/play/logo_blocks.png" alt="BLOCKS">
+          </div>
+
+          <div class="highscore-label">
+            HIGH SCORE
+          </div>
+
+          <div class="highscore-value">
+            <span id="highscore">0</span>
+          </div>
+
+          <div class="hud">
+            <div>Score: <span id="score">0</span></div>
+            <div>Level: <span id="level">1</span></div>
+          </div>
+
+          <canvas id="game" width="800" height="1066"></canvas>
+
+          <div class="build-info">
+            Build: <span id="build">117</span>
+          </div>
+
+          <div class="controls-info">
+            Pause — Space / Double Tap<br>
+            Freeze — stops blocks movement for 10 sec (cumulative).<br>
+            Bomb — destroys nearby blocks (chain reaction).<br>
+            Salvation — clears danger zone (costs 2000 score, regress and no points gained).<br>
+            Don’t let blocks reach the red line.
+          </div>
+
         </div>
-
-        <div class="highscore-label">
-          HIGH SCORE
-        </div>
-
-        <div class="highscore-value">
-          <span id="highscore">0</span>
-        </div>
-
-        <div class="hud">
-          <div>Score: <span id="score">0</span></div>
-          <div>Level: <span id="level">1</span></div>
-        </div>
-
-        <canvas id="game" width="480" height="640"></canvas>
-
-        <div class="build-info">
-          Build: <span id="build">70</span>
-        </div>
-
-        <div class="controls-info">
-          Click / Tap / Space — Start / Restart<br>
-          Space / Double Tap — Pause
-        </div>
-
       </div>
     </section>
   </main>
