@@ -2,6 +2,8 @@ const canvas = document.getElementById('game');
 const ctx = canvas.getContext('2d');
 const scoreElement = document.getElementById('score');
 const levelElement = document.getElementById('level');
+const winProgressFillElement = document.getElementById('winProgressFill');
+const winProgressElement = document.getElementById('winProgress'); 
 
 const highScoreElement = document.getElementById('highscore');
 
@@ -15,7 +17,7 @@ const GRID_COLUMNS = 11;
 const GRID_ROWS = 7;
 
 const BLOCK_GAP = 0;
-const PLAY_TOP = 10;
+const PLAY_TOP = 0;
 const BLOCK_TOP = PLAY_TOP;
 const BLOCK_HEIGHT = (WIDTH - BLOCK_GAP * (GRID_COLUMNS + 1)) / GRID_COLUMNS;
 const BLOCK_WIDTH = (WIDTH - BLOCK_GAP * (GRID_COLUMNS + 1)) / GRID_COLUMNS;
@@ -888,7 +890,7 @@ function addExplosion(row, col, color, power = 1) {
 
     for (let i = 0; i < particleCount; i++) {
         const angle = Math.random() * Math.PI * 2;
-        const speed = (0.6 + Math.random() * 2.1) * power;
+        const speed = (0.6 + Math.random() * 2.1) * power * UI_SCALE;
         const lifeSpeed = 0.006 + Math.random() * 0.009;
 
         particles.push({
@@ -896,7 +898,7 @@ function addExplosion(row, col, color, power = 1) {
             y: cy + (Math.random() - 0.5) * BLOCK_HEIGHT * 0.35,
             vx: Math.cos(angle) * speed,
             vy: Math.sin(angle) * speed,
-            size: (1.4 + Math.random() * 3.4) * power,
+            size: (1.4 + Math.random() * 3.4) * power * UI_SCALE,
             life: 1,
             lifeSpeed: lifeSpeed,
             color: color
@@ -1438,7 +1440,7 @@ function collideWithSingleBlock(row, col, block, y) {
     activateFreeze(row, col);
     } else {
     pointsEarned = destroyBlock(row, col);
-    addExplosion(row, col, block.color, 0.8);
+    addExplosion(row, col, block.color, 1.1);
     }
 
     reflectBallFromBlock(x, y);
@@ -1702,6 +1704,47 @@ function drawWinProgress() {
     ctx.restore();
 }
 
+function updateWinProgressBar() {
+    const requiredScore = getScoreRequiredToCompleteGame();
+    const progress = Math.max(0, Math.min(1, score / requiredScore));
+
+    const colorStops = [
+        [0, [0, 0, 255]],
+        [0.25, [0, 255, 0]],
+        [0.5, [255, 255, 0]],
+        [0.75, [255, 127, 0]],
+        [0.95, [255, 0, 0]]
+    ];
+
+    let fillColor = 'rgb(0,0,255)';
+
+    for (let i = 0; i < colorStops.length - 1; i++) {
+        const [p1, c1] = colorStops[i];
+        const [p2, c2] = colorStops[i + 1];
+
+        if (progress >= p1 && progress <= p2) {
+            const t = (progress - p1) / (p2 - p1);
+            fillColor = interpolateColor(c1, c2, t);
+            break;
+        }
+
+        if (progress > 0.95) {
+            fillColor = 'rgb(255,0,0)';
+        }
+    }
+
+    winProgressFillElement.style.width = `${progress * 100}%`;
+    winProgressFillElement.style.setProperty('--progress-color', fillColor);
+
+    if (!gameStarted || isPaused || gameOver || gameWon) {
+        winProgressElement.style.animationPlayState = 'paused';
+        winProgressFillElement.style.animationPlayState = 'paused';
+    } else {
+        winProgressElement.style.animationPlayState = 'running';
+        winProgressFillElement.style.animationPlayState = 'running';
+    }
+}
+
 function lerpColor(a, b, t) {
     return Math.round(a + (b - a) * t);
 }
@@ -1780,7 +1823,7 @@ function drawSaveButton() {
     );
 
     ctx.fillStyle = canSave ? '#ffffff' : '#9ca3af';
-    ctx.font = '10px Arial';
+    ctx.font = '20px Arial';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
     ctx.fillText('SALVATION', saveButton.x, saveButton.y);
@@ -1825,7 +1868,8 @@ function drawPauseOverlay() {
 
 function draw() {
     ctx.clearRect(0, 0, WIDTH, HEIGHT);
-    
+
+    updateWinProgressBar();
     drawPendingTopRow();
     drawBlocks();
     drawExplosions();
@@ -1836,7 +1880,6 @@ function draw() {
     drawBall();
     drawFreezeTimer();
     drawFPS();
-    drawWinProgress();
     drawRunTimer();
     drawPauseOverlay();
 
