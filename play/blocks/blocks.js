@@ -8,35 +8,54 @@ const highScoreElement = document.getElementById('highscore');
 /* Canvas */
 const WIDTH = canvas.width;
 const HEIGHT = canvas.height;
+const UI_SCALE = WIDTH / 480;
 
 /* Grid */
-const GRID_COLUMNS = 13;
-const GRID_ROWS = 9;
+const GRID_COLUMNS = 11;
+const GRID_ROWS = 7;
 
-/* Block */
 const BLOCK_GAP = 0;
-const BLOCK_TOP = 0;
+const PLAY_TOP = 10;
+const BLOCK_TOP = PLAY_TOP;
 const BLOCK_HEIGHT = (WIDTH - BLOCK_GAP * (GRID_COLUMNS + 1)) / GRID_COLUMNS;
 const BLOCK_WIDTH = (WIDTH - BLOCK_GAP * (GRID_COLUMNS + 1)) / GRID_COLUMNS;
-const BLOCK_SPEED_GROWTH = 1.02;
 
-/* Row */
 const NEW_ROW_INTERVAL = 12000;
+const BLOCK_SPEED_GROWTH = 1.0135;
 
 /* Paddle */
-const KEYBOARD_PADDLE_SPEED = 7;
-const BASE_PADDLE_WIDTH = 130;
-const PADDLE_SHRINK_PER_LEVEL = 0.03;
+const KEYBOARD_PADDLE_SPEED = 7 * UI_SCALE;
+const BASE_PADDLE_WIDTH = 250;
+const PADDLE_SHRINK_PER_LEVEL = 0.0085;
+const paddle = {
+    width: BASE_PADDLE_WIDTH,
+    height: 16 * UI_SCALE,
+    x: WIDTH / 2 - BASE_PADDLE_WIDTH / 2,
+    y: HEIGHT - 45 * UI_SCALE,
+    speed: 0
+};
 
 /* Ball */
-const BASE_BALL_SPEED = 7;
-const BALL_SPEED_GROWTH = 1.04;
+const BASE_BALL_SPEED = 830;
+const BALL_SPEED_GROWTH = 1.0165;
+const BALL_TRAIL_LENGTH = 8;
+const ballTrail = [];
+const ball = {
+    x: WIDTH / 2,
+    y: HEIGHT - 130,
+    prevX: WIDTH / 2,
+    prevY: HEIGHT - 1300,
+    radius: 8 * UI_SCALE,
+    speed: BASE_BALL_SPEED,
+    dx: 0,
+    dy: 0
+};
 
 /* Physics */
 const MAX_PHYSICS_STEP = 0.5;
 
 /* Level */
-const MAX_LEVEL = 30;
+const MAX_LEVEL = 50;
 const FIRST_LEVEL_SCORE = 300;
 const LEVEL_SCORE_GROWTH = 1.05;
 
@@ -51,13 +70,17 @@ const FREEZE_DURATION = 10000;
 const HIGH_SCORE_STORAGE_KEY = 'blocks_highscore_value';
 const HIGH_SCORE_SIGNATURE_KEY = 'blocks_highscore_signature';
 const HIGH_SCORE_SALT = 'pitbraun_blocks_v1';
+const COMPLETED_KEY = 'blocks_completed';
 
-const paddle = {
-    width: BASE_PADDLE_WIDTH,
-    height: 16,
-    x: WIDTH / 2 - BASE_PADDLE_WIDTH / 2,
-    y: HEIGHT - 45,
-    speed: 0
+/* Save */
+const SAVE_COST = 2000;
+const SAFE_ZONE_BLOCKS = 3;
+
+const saveButton = {
+    x: WIDTH / 2,
+    y: HEIGHT - 15 * UI_SCALE,
+    width: 80 * UI_SCALE,
+    height: 24 * UI_SCALE
 };
 
 const keys = {
@@ -69,30 +92,33 @@ let pointerActive = false;
 let lastPointerX = 0;
 const DOUBLE_TAP_DELAY = 300;
 
-const ball = {
+const startButton = {
     x: WIDTH / 2,
-    y: HEIGHT - 80,
-    prevX: WIDTH / 2,
-    prevY: HEIGHT - 80,
-    radius: 8,
-    speed: BASE_BALL_SPEED,
-    dx: 0,
-    dy: 0
+    y: HEIGHT * 0.6,
+    radius: 50 * UI_SCALE
 };
 
 let score = 0;
 let level = 1;
+let runElapsedTime = 0;
+let shineTime = 0;
 let highScore = 0;
 let gameOver = false;
 let gameWon = false;
 let isPaused = false;
 let gameStarted = false;
+let pauseStartedAt = 0;
 let blocks = [];
 let pendingTopRow = null;
 let rowDropOffset = 0;
 let freezeUntilTime = 0;
+let freezeStoppedAt = 0;
 let freezePauseStartedAt = 0;
 let particles = [];
+let ballVisible = true;
+let winAnimationTime = 0;
+let winExplosionQueue = [];
+let winExplosionStartedAt = 0;
 const blockImageCache = new Map();
 const blockTextImageCache = new Map();
 const specialBlockIconCache = new Map();
@@ -100,6 +126,15 @@ const BOMB_ICON_SRC = 'data:image/svg+xml;base64,PD94bWwgdmVyc2lvbj0iMS4wIiBlbmN
 const FREEZE_ICON_SRC = 'data:image/svg+xml;base64,PD94bWwgdmVyc2lvbj0iMS4wIiBlbmNvZGluZz0iVVRGLTgiPz48c3ZnIGlkPSJhIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA2NCA2NCI+PHJlY3QgeD0iMCIgd2lkdGg9IjY0IiBoZWlnaHQ9IjY0IiBmaWxsPSIjZjJmMmYyIiBzdHJva2Utd2lkdGg9IjAiLz48cG9seWdvbiBwb2ludHM9IjkgNTUgMCA2NCAwIDAgOSA5IDkgNTUiIGZpbGw9IiNiM2IzYjMiIHN0cm9rZS13aWR0aD0iMCIvPjxwb2x5Z29uIHBvaW50cz0iNTUgNTUgNjQgNjQgNjQgMCA1NSA5IDU1IDU1IiBmaWxsPSIjOTk5IiBzdHJva2Utd2lkdGg9IjAiLz48cmVjdCB4PSI5IiB5PSI5IiB3aWR0aD0iNDYiIGhlaWdodD0iNDYiIGZpbGw9IiNiZmJmYmYiIHN0cm9rZS13aWR0aD0iMCIvPjxwb2x5Z29uIHBvaW50cz0iOSA5IDAgMCA2NCAwIDU1IDkgOSA5IiBmaWxsPSIjZmZmIiBzdHJva2Utd2lkdGg9IjAiLz48cG9seWdvbiBwb2ludHM9IjkgNTUgMCA2NCA2NCA2NCA1NSA1NSA5IDU1IiBmaWxsPSJncmF5IiBzdHJva2Utd2lkdGg9IjAiLz48cGF0aCBkPSJtMjkuNDksMTZjLS4yNS4yNiwwLC42OS4zNS42MWwxLjA2LS4yNGMuMTktLjA0LjM4LjA3LjQzLjI1bC4zMiwxLjA0Yy4xMS4zNS41OS4zNS43LDBsLjMyLTEuMDRjLjA2LS4xOC4yNS0uMjkuNDMtLjI1bDEuMDYuMjRjLjM1LjA4LjYtLjM0LjM1LS42MWwtLjc0LS43OWMtLjEzLS4xNC0uMTMtLjM2LDAtLjVsLjc0LS43OWMuMjUtLjI2LDAtLjY5LS4zNS0uNjFsLTEuMDYuMjRjLS4xOS4wNC0uMzgtLjA3LS40My0uMjVsLS4zMi0xLjA0Yy0uMTEtLjM1LS41OS0uMzUtLjcsMGwtLjMyLDEuMDRjLS4wNi4xOC0uMjUuMjktLjQzLjI1bC0xLjA2LS4yNGMtLjM1LS4wOC0uNi4zNC0uMzUuNjFsLjc0Ljc5Yy4xMy4xNC4xMy4zNiwwLC41bC0uNzQuNzlaIiBmaWxsPSIjMGFmIiBzdHJva2Utd2lkdGg9IjAiLz48cGF0aCBkPSJtMzQuNTEsNDhjLjI1LS4yNiwwLS42OS0uMzUtLjYxbC0xLjA2LjI0Yy0uMTkuMDQtLjM4LS4wNy0uNDMtLjI1bC0uMzItMS4wNGMtLjExLS4zNS0uNTktLjM1LS43LDBsLS4zMiwxLjA0Yy0uMDYuMTgtLjI1LjI5LS40My4yNWwtMS4wNi0uMjRjLS4zNS0uMDgtLjYuMzQtLjM1LjYxbC43NC43OWMuMTMuMTQuMTMuMzYsMCwuNWwtLjc0Ljc5Yy0uMjUuMjYsMCwuNjkuMzUuNjFsMS4wNi0uMjRjLjE5LS4wNC4zOC4wNy40My4yNWwuMzIsMS4wNGMuMTEuMzUuNTkuMzUuNywwbC4zMi0xLjA0Yy4wNi0uMTguMjUtLjI5LjQzLS4yNWwxLjA2LjI0Yy4zNS4wOC42LS4zNC4zNS0uNjFsLS43NC0uNzljLS4xMy0uMTQtLjEzLS4zNiwwLS41bC43NC0uNzlaIiBmaWxsPSIjMGFmIiBzdHJva2Utd2lkdGg9IjAiLz48cGF0aCBkPSJtMTQuNzMsMjQuNTJjLS4yNS4yNiwwLC42OS4zNS42MWwxLjA2LS4yNGMuMTktLjA0LjM4LjA3LjQzLjI1bC4zMiwxLjA0Yy4xMS4zNS41OS4zNS43LDBsLjMyLTEuMDRjLjA2LS4xOC4yNS0uMjkuNDMtLjI1bDEuMDYuMjRjLjM1LjA4LjYtLjM0LjM1LS42MWwtLjc0LS43OWMtLjEzLS4xNC0uMTMtLjM2LDAtLjVsLjc0LS43OWMuMjUtLjI2LDAtLjY5LS4zNS0uNjFsLTEuMDYuMjRjLS4xOS4wNC0uMzgtLjA3LS40My0uMjVsLS4zMi0xLjA0Yy0uMTEtLjM1LS41OS0uMzUtLjcsMGwtLjMyLDEuMDRjLS4wNi4xOC0uMjUuMjktLjQzLjI1bC0xLjA2LS4yNGMtLjM1LS4wOC0uNi4zNC0uMzUuNjFsLjc0Ljc5Yy4xMy4xNC4xMy4zNiwwLC41bC0uNzQuNzlaIiBmaWxsPSIjMGFmIiBzdHJva2Utd2lkdGg9IjAiLz48cGF0aCBkPSJtNDkuMjcsMzkuNDhjLjI1LS4yNiwwLS42OS0uMzUtLjYxbC0xLjA2LjI0Yy0uMTkuMDQtLjM4LS4wNy0uNDMtLjI1bC0uMzItMS4wNGMtLjExLS4zNS0uNTktLjM1LS43LDBsLS4zMiwxLjA0Yy0uMDYuMTgtLjI1LjI5LS40My4yNWwtMS4wNi0uMjRjLS4zNS0uMDgtLjYuMzQtLjM1LjYxbC43NC43OWMuMTMuMTQuMTMuMzYsMCwuNWwtLjc0Ljc5Yy0uMjUuMjYsMCwuNjkuMzUuNjFsMS4wNi0uMjRjLjE5LS4wNC4zOC4wNy40My4yNWwuMzIsMS4wNGMuMTEuMzUuNTkuMzUuNywwbC4zMi0xLjA0Yy4wNi0uMTguMjUtLjI5LjQzLS4yNWwxLjA2LjI0Yy4zNS4wOC42LS4zNC4zNS0uNjFsLS43NC0uNzljLS4xMy0uMTQtLjEzLS4zNiwwLS41bC43NC0uNzlaIiBmaWxsPSIjMGFmIiBzdHJva2Utd2lkdGg9IjAiLz48cGF0aCBkPSJtMTkuNzQsMzkuNDhjLjI1LS4yNiwwLS42OS0uMzUtLjYxbC0xLjA2LjI0Yy0uMTkuMDQtLjM4LS4wNy0uNDMtLjI1bC0uMzItMS4wNGMtLjExLS4zNS0uNTktLjM1LS43LDBsLS4zMiwxLjA0Yy0uMDYuMTgtLjI1LjI5LS40My4yNWwtMS4wNi0uMjRjLS4zNS0uMDgtLjYuMzQtLjM1LjYxbC43NC43OWMuMTMuMTQuMTMuMzYsMCwuNWwtLjc0Ljc5Yy0uMjUuMjYsMCwuNjkuMzUuNjFsMS4wNi0uMjRjLjE5LS4wNC4zOC4wNy40My4yNWwuMzIsMS4wNGMuMTEuMzUuNTkuMzUuNywwbC4zMi0xLjA0Yy4wNi0uMTguMjUtLjI5LjQzLS4yNWwxLjA2LjI0Yy4zNS4wOC42LS4zNC4zNS0uNjFsLS43NC0uNzljLS4xMy0uMTQtLjEzLS4zNiwwLS41bC43NC0uNzlaIiBmaWxsPSIjMGFmIiBzdHJva2Utd2lkdGg9IjAiLz48cGF0aCBkPSJtNDguNTMsMjMuNzNjLS4xMy0uMTQtLjEzLS4zNiwwLS41bC43NC0uNzljLjI1LS4yNiwwLS42OS0uMzUtLjYxbC0xLjA2LjI0Yy0uMTkuMDQtLjM4LS4wNy0uNDMtLjI1bC0uMzItMS4wNGMtLjExLS4zNS0uNTktLjM1LS43LDBsLS4zMiwxLjA0Yy0uMDYuMTgtLjI1LjI5LS40My4yNWwtMS4wNi0uMjRjLS4zNS0uMDgtLjYuMzQtLjM1LjYxbC43NC43OWMuMTMuMTQuMTMuMzYsMCwuNWwtLjc0Ljc5Yy0uMjUuMjYsMCwuNjkuMzUuNjFsMS4wNi0uMjRjLjE5LS4wNC4zOC4wNy40My4yNWwuMzIsMS4wNGMuMTEuMzUuNTkuMzUuNywwbC4zMi0xLjA0Yy4wNi0uMTguMjUtLjI5LjQzLS4yNWwxLjA2LjI0Yy4zNS4wOC42LS4zNC4zNS0uNjFsLS43NC0uNzlaIiBmaWxsPSIjMGFmIiBzdHJva2Utd2lkdGg9IjAiLz48cGF0aCBkPSJtNDMuNDcsMzkuMTdjLS4wOC0uMzUuMTItLjcxLjQ3LS44MmwxLjk2LS42Yy42NS0uMi42NS0xLjEyLDAtMS4zMmwtMS45Ni0uNmMtLjM1LS4xMS0uNTUtLjQ2LS40Ny0uODJsLjQ2LTJjLjE1LS42Ny0uNjUtMS4xMy0xLjE1LS42NmwtMS41LDEuNGMtLjI3LjI1LS42OC4yNS0uOTQsMGwtMS41LTEuNGMtLjUtLjQ3LTEuMywwLTEuMTUuNjZsLjM5LDEuNy0yLjE4LTIuMzNjLS4yLS4yMS0uMi0uNTQsMC0uNzVsMi4xOC0yLjMzLS4zOSwxLjdjLS4xNS42Ny42NSwxLjEzLDEuMTUuNjZsMS41LTEuNGMuMjctLjI1LjY4LS4yNS45NCwwbDEuNSwxLjRjLjUuNDcsMS4zLDAsMS4xNS0uNjZsLS40Ni0yYy0uMDgtLjM1LjEyLS43MS40Ny0uODJsMS45Ni0uNmMuNjUtLjIuNjUtMS4xMiwwLTEuMzJsLTEuOTYtLjZjLS4zNS0uMTEtLjU1LS40Ni0uNDctLjgybC40Ni0yYy4xNS0uNjctLjY1LTEuMTMtMS4xNS0uNjZsLTEuNSwxLjRjLS4yNy4yNS0uNjguMjUtLjk0LDBsLTEuNS0xLjRjLS41LS40Ny0xLjMsMC0xLjE1LjY2bC40NiwyYy4wOC4zNS0uMTIuNzEtLjQ3LjgybC0xLjk2LjZjLS42NS4yLS42NSwxLjEyLDAsMS4zMmwxLjY3LjUxLTMuMTEuNzJjLS4yOC4wNi0uNTYtLjEtLjY1LS4zN2wtLjkzLTMuMDUsMS4yNywxLjE5Yy41LjQ3LDEuMywwLDEuMTUtLjY2bC0uNDYtMmMtLjA4LS4zNS4xMi0uNzEuNDctLjgybDEuOTYtLjZjLjY1LS4yLjY1LTEuMTIsMC0xLjMybC0xLjk2LS42Yy0uMzUtLjExLS41NS0uNDYtLjQ3LS44MmwuNDYtMmMuMTUtLjY3LS42NS0xLjEzLTEuMTUtLjY2bC0xLjUsMS40Yy0uMjcuMjUtLjY4LjI1LS45NCwwbC0xLjUtMS40Yy0uNS0uNDctMS4zLDAtMS4xNS42NmwuNDYsMmMuMDguMzUtLjEyLjcxLS40Ny44MmwtMS45Ni42Yy0uNjUuMi0uNjUsMS4xMiwwLDEuMzJsMS45Ni42Yy4zNS4xMS41NS40Ni40Ny44MmwtLjQ2LDJjLS4xNS42Ny42NSwxLjEzLDEuMTUuNjZsMS4yNy0xLjE5LS45MywzLjA1Yy0uMDguMjgtLjM3LjQ0LS42NS4zN2wtMy4xMS0uNzIsMS42Ny0uNTFjLjY1LS4yLjY1LTEuMTIsMC0xLjMybC0xLjk2LS42Yy0uMzUtLjExLS41NS0uNDYtLjQ3LS44MmwuNDYtMmMuMTUtLjY3LS42NS0xLjEzLTEuMTUtLjY2bC0xLjUsMS40Yy0uMjcuMjUtLjY4LjI1LS45NCwwbC0xLjUtMS40Yy0uNS0uNDctMS4zLDAtMS4xNS42NmwuNDYsMmMuMDguMzUtLjEyLjcxLS40Ny44MmwtMS45Ni42Yy0uNjUuMi0uNjUsMS4xMiwwLDEuMzJsMS45Ni42Yy4zNS4xMS41NS40Ni40Ny44MmwtLjQ2LDJjLS4xNS42Ny42NSwxLjEzLDEuMTUuNjZsMS41LTEuNGMuMjctLjI1LjY4LS4yNS45NCwwbDEuNSwxLjRjLjUuNDcsMS4zLDAsMS4xNS0uNjZsLS4zOS0xLjcsMi4xOCwyLjMzYy4yLjIxLjIuNTQsMCwuNzVsLTIuMTgsMi4zMy4zOS0xLjdjLjE1LS42Ny0uNjUtMS4xMy0xLjE1LS42NmwtMS41LDEuNGMtLjI3LjI1LS42OC4yNS0uOTQsMGwtMS41LTEuNGMtLjUtLjQ3LTEuMywwLTEuMTUuNjZsLjQ2LDJjLjA4LjM1LS4xMi43MS0uNDcuODJsLTEuOTYuNmMtLjY1LjItLjY1LDEuMTIsMCwxLjMybDEuOTYuNmMuMzUuMTEuNTUuNDYuNDcuODJsLS40NiwyYy0uMTUuNjcuNjUsMS4xMywxLjE1LjY2bDEuNS0xLjRjLjI3LS4yNS42OC0uMjUuOTQsMGwxLjUsMS40Yy41LjQ3LDEuMywwLDEuMTUtLjY2bC0uNDYtMmMtLjA4LS4zNS4xMi0uNzEuNDctLjgybDEuOTYtLjZjLjY1LS4yLjY1LTEuMTIsMC0xLjMybC0xLjY3LS41MSwzLjExLS43MmMuMjgtLjA2LjU2LjEuNjUuMzdsLjkzLDMuMDUtMS4yNy0xLjE5Yy0uNS0uNDctMS4zLDAtMS4xNS42NmwuNDYsMmMuMDguMzUtLjEyLjcxLS40Ny44MmwtMS45Ni42Yy0uNjUuMi0uNjUsMS4xMiwwLDEuMzJsMS45Ni42Yy4zNS4xMS41NS40Ni40Ny44MmwtLjQ2LDJjLS4xNS42Ny42NSwxLjEzLDEuMTUuNjZsMS41LTEuNGMuMjctLjI1LjY4LS4yNS45NCwwbDEuNSwxLjRjLjUuNDcsMS4zLDAsMS4xNS0uNjZsLS40Ni0yYy0uMDgtLjM1LjEyLS43MS40Ny0uODJsMS45Ni0uNmMuNjUtLjIuNjUtMS4xMiwwLTEuMzJsLTEuOTYtLjZjLS4zNS0uMTEtLjU1LS40Ni0uNDctLjgybC40Ni0yYy4xNS0uNjctLjY1LTEuMTMtMS4xNS0uNjZsLTEuMjcsMS4xOS45My0zLjA1Yy4wOC0uMjguMzctLjQ0LjY1LS4zN2wzLjExLjcyLTEuNjcuNTFjLS42NS4yLS42NSwxLjEyLDAsMS4zMmwxLjk2LjZjLjM1LjExLjU1LjQ2LjQ3LjgybC0uNDYsMmMtLjE1LjY3LjY1LDEuMTMsMS4xNS42NmwxLjUtMS40Yy4yNy0uMjUuNjgtLjI1Ljk0LDBsMS41LDEuNGMuNS40NywxLjMsMCwxLjE1LS42NmwtLjQ2LTJaIiBmaWxsPSIjMGFmIiBzdHJva2Utd2lkdGg9IjAiLz48L3N2Zz4=';
 let lastNewRowTime = performance.now();
 let lastFrameTime = performance.now();
+let fps = 0;
+let fpsCounter = 0;
+let fpsTime = 0;
+
+const bombIconImage = new Image();
+bombIconImage.src = BOMB_ICON_SRC;
+
+const freezeIconImage = new Image();
+freezeIconImage.src = FREEZE_ICON_SRC;
 
 const BLOCK_TYPES = [
     { color: '#ff0000', points: 10 },
@@ -126,7 +161,10 @@ function createRow() {
         color: isBomb ? '#ffffff' : isFreeze ? '#93c5fd' : type.color,
         points: isBomb || isFreeze ? 0 : type.points,
         isBomb: isBomb,
-        isFreeze: isFreeze
+        isFreeze: isFreeze,
+        shinePhase: Math.random(),
+        shineDuration: Math.random(),
+        shineInterval: Math.random()
     });
     }
 
@@ -187,8 +225,8 @@ function checkClearedRows() {
 }
 
 function movePaddleByPointerDelta(clientX) {
-    if (isPaused || gameOver || gameWon) {
-    return;
+    if (!gameStarted || isPaused || gameOver || gameWon) {
+        return;
     }
 
     const rect = canvas.getBoundingClientRect();
@@ -222,11 +260,60 @@ window.addEventListener('mouseup', () => {
 });
 
 window.addEventListener('touchstart', event => {
+    const rect = canvas.getBoundingClientRect();
+    const touch = event.touches[0];
+
+    const x = (touch.clientX - rect.left) * (WIDTH / rect.width);
+    const y = (touch.clientY - rect.top) * (HEIGHT / rect.height);
+
+    if (isPaused && !gameOver && !gameWon) {
+        event.preventDefault();
+
+        const dx = x - startButton.x;
+        const dy = y - startButton.y;
+        const dist = Math.sqrt(dx * dx + dy * dy);
+
+        if (dist <= startButton.radius) {
+            const pauseDuration = performance.now() - pauseStartedAt;
+            lastNewRowTime += pauseDuration;
+            freezeUntilTime += pauseDuration;
+            pauseStartedAt = 0;
+            isPaused = false;
+        }
+
+        return;
+    }
+
+    if (gameStarted && !gameOver && !gameWon && !isPaused) {
+        const saveLeft = saveButton.x - saveButton.width / 2;
+        const saveRight = saveButton.x + saveButton.width / 2;
+        const saveTop = saveButton.y - saveButton.height / 2;
+        const saveBottom = saveButton.y + saveButton.height / 2;
+
+        if (x >= saveLeft && x <= saveRight && y >= saveTop && y <= saveBottom) {
+            event.preventDefault();
+            useSaveButton();
+            lastTapTime = 0;
+            return;
+        }
+    }
+
     const now = performance.now();
 
     if (gameStarted && !gameOver && !gameWon && now - lastTapTime <= DOUBLE_TAP_DELAY) {
         event.preventDefault();
-        isPaused = !isPaused;
+
+        if (isPaused) {
+            const pauseDuration = performance.now() - pauseStartedAt;
+            lastNewRowTime += pauseDuration;
+            freezeUntilTime += pauseDuration;
+            pauseStartedAt = 0;
+            isPaused = false;
+        } else {
+            pauseStartedAt = performance.now();
+            isPaused = true;
+        }
+
         keys.left = false;
         keys.right = false;
         pointerActive = false;
@@ -238,12 +325,35 @@ window.addEventListener('touchstart', event => {
 
     if (!gameStarted) {
         event.preventDefault();
-        gameStarted = true;
+
+        const dx = x - startButton.x;
+        const dy = y - startButton.y;
+        const dist = Math.sqrt(dx * dx + dy * dy);
+
+        if (dist <= startButton.radius) {
+            gameStarted = true;
+            lastNewRowTime = performance.now();
+            runElapsedTime = 0;
+        }
+
         return;
     }
 
     if (gameOver || gameWon) {
-        restartGame();
+        event.preventDefault();
+
+        const dx = x - startButton.x;
+        const dy = y - startButton.y;
+        const dist = Math.sqrt(dx * dx + dy * dy);
+
+        if (dist <= startButton.radius) {
+            restartGame();
+            gameStarted = true;
+            lastNewRowTime = performance.now();
+            runElapsedTime = 0;
+            lastTapTime = 0;
+        }
+
         return;
     }
 
@@ -266,15 +376,70 @@ window.addEventListener('touchend', () => {
     pointerActive = false;
 });
 
-canvas.addEventListener('click', () => {
+canvas.addEventListener('click', (event) => {
+    if (isPaused && !gameOver && !gameWon) {
+        const rect = canvas.getBoundingClientRect();
+        const x = (event.clientX - rect.left) * (WIDTH / rect.width);
+        const y = (event.clientY - rect.top) * (HEIGHT / rect.height);
+
+        const dx = x - startButton.x;
+        const dy = y - startButton.y;
+        const dist = Math.sqrt(dx * dx + dy * dy);
+
+        if (dist <= startButton.radius) {
+            const pauseDuration = performance.now() - pauseStartedAt;
+            lastNewRowTime += pauseDuration;
+            freezeUntilTime += pauseDuration;
+            pauseStartedAt = 0;
+            isPaused = false;
+        }
+
+        return;
+    }
+
+    const rect = canvas.getBoundingClientRect();
+    const x = (event.clientX - rect.left) * (WIDTH / rect.width);
+    const y = (event.clientY - rect.top) * (HEIGHT / rect.height);
+
+    if (gameStarted && !gameOver && !gameWon && !isPaused) {
+        const saveLeft = saveButton.x - saveButton.width / 2;
+        const saveRight = saveButton.x + saveButton.width / 2;
+        const saveTop = saveButton.y - saveButton.height / 2;
+        const saveBottom = saveButton.y + saveButton.height / 2;
+
+        if (x >= saveLeft && x <= saveRight && y >= saveTop && y <= saveBottom) {
+            useSaveButton();
+            return;
+        }
+    }
+
     if (!gameStarted) {
-        gameStarted = true;
+        const dx = x - startButton.x;
+        const dy = y - startButton.y;
+        const dist = Math.sqrt(dx * dx + dy * dy);
+
+        if (dist <= startButton.radius) {
+            gameStarted = true;
+            lastNewRowTime = performance.now();
+            runElapsedTime = 0;
+        }
+
         return;
     }
 
     if (gameOver || gameWon) {
-        restartGame();
-        gameStarted = true;
+        const dx = x - startButton.x;
+        const dy = y - startButton.y;
+        const dist = Math.sqrt(dx * dx + dy * dy);
+
+        if (dist <= startButton.radius) {
+            restartGame();
+            gameStarted = true;
+            lastNewRowTime = performance.now();
+            runElapsedTime = 0;
+        }
+
+        return;
     }
 });
 
@@ -290,6 +455,8 @@ window.addEventListener('keydown', event => {
     if (event.code === 'Space') {
         if (!gameStarted) {
             gameStarted = true;
+            lastNewRowTime = performance.now();
+            runElapsedTime = 0;
             return;
         }
 
@@ -299,7 +466,17 @@ window.addEventListener('keydown', event => {
             return;
         }
 
-        isPaused = !isPaused;
+        if (isPaused) {
+            const pauseDuration = performance.now() - pauseStartedAt;
+            lastNewRowTime += pauseDuration;
+            freezeUntilTime += pauseDuration;
+            pauseStartedAt = 0;
+            isPaused = false;
+        } else {
+            pauseStartedAt = performance.now();
+            isPaused = true;
+        }
+
         keys.left = false;
         keys.right = false;
         pointerActive = false;
@@ -360,9 +537,13 @@ function restartGame() {
     isPaused = false;
     gameOver = false;
     gameWon = false;
+    freezeStoppedAt = 0;
     score = 0;
     level = 1;
     particles = [];
+    ballVisible = true;
+    runStartTime = 0;
+    runElapsedTime = 0;
     scoreElement.textContent = score;
     levelElement.textContent = level;
     
@@ -372,14 +553,21 @@ function restartGame() {
     paddle.width = BASE_PADDLE_WIDTH;
     paddle.x = WIDTH / 2 - paddle.width / 2;
     ball.x = WIDTH / 2;
-    ball.y = HEIGHT - 80;
+    ball.y = HEIGHT - 130;
     ball.prevX = ball.x;
     ball.prevY = ball.y;
     ball.speed = BASE_BALL_SPEED;
     setBallDirection(0, -1);
 
     highScore = loadHighScore();
-    highScoreElement.textContent = highScore;
+
+    const isCompleted = localStorage.getItem(COMPLETED_KEY) === '1';
+
+    if (isCompleted) {
+        highScoreElement.textContent = '★ ' + highScore + ' ★';
+    } else {
+        highScoreElement.textContent = highScore;
+    }
 
     resetBlocks();
 }
@@ -393,51 +581,106 @@ function drawDangerLine() {
     ctx.stroke();
 }
 
+function drawSafeZone() {
+    const safeZoneHeight = BLOCK_HEIGHT * SAFE_ZONE_BLOCKS;
+    const safeZoneY = paddle.y - safeZoneHeight;
+
+    ctx.save();
+
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.08)';
+    ctx.fillRect(0, safeZoneY, WIDTH, safeZoneHeight);
+
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.18)';
+    ctx.lineWidth = 1;
+    ctx.strokeRect(0, safeZoneY, WIDTH, safeZoneHeight);
+
+    ctx.restore();
+}
+
 function drawPaddle() {
     ctx.fillStyle = '#e5e7eb';
     ctx.fillRect(paddle.x, paddle.y, paddle.width, paddle.height);
 }
 
 function getRemainingFreezeTime() {
-    return Math.max(0, freezeUntilTime - performance.now());
+    const now =
+        freezeStoppedAt > 0
+            ? freezeStoppedAt
+            : (isPaused && pauseStartedAt > 0)
+                ? pauseStartedAt
+                : performance.now();
+
+    return Math.max(0, freezeUntilTime - now);
 }
 
 function drawFreezeTimer() {
     const remainingFreezeTime = getRemainingFreezeTime();
 
     if (remainingFreezeTime <= 0) {
-    return;
+        return;
     }
 
     const seconds = Math.ceil(remainingFreezeTime / 1000);
     const label = `Freeze: ${seconds}s`;
-    const barWidth = Math.min(paddle.width, 140);
-    const barHeight = 4;
-    const barX = paddle.x + paddle.width / 2 - barWidth / 2;
-    const barY = paddle.y + paddle.height + 9;
-    const progress = Math.min(1, remainingFreezeTime / FREEZE_DURATION);
-
-    ctx.fillStyle = 'rgba(147, 197, 253, 0.18)';
-    ctx.fillRect(barX, barY, barWidth, barHeight);
-
-    ctx.fillStyle = '#93c5fd';
-    ctx.fillRect(barX, barY, barWidth * progress, barHeight);
 
     ctx.fillStyle = '#dbeafe';
-    ctx.font = '12px Arial';
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'top';
-    ctx.fillText(label, paddle.x + paddle.width / 2, barY + 7);
+    ctx.font = '20px Arial';
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'bottom';
+    ctx.fillText(label, 10, HEIGHT - 2);
+
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'alphabetic';
+}
+
+function drawRunTimer() {
+
+    const totalSeconds = runElapsedTime / 1000; 
+    const minutes = Math.floor(totalSeconds / 60);
+    const seconds = Math.floor(totalSeconds % 60);
+    const hundredths = Math.floor((totalSeconds % 1) * 100);
+
+    const label =
+        `Run: ${String(minutes).padStart(2, '0')}:` +
+        `${String(seconds).padStart(2, '0')}.` +
+        `${String(hundredths).padStart(2, '0')}`;
+
+    ctx.fillStyle = 'rgb(0, 255, 0)';
+    ctx.font = '10px Arial';
+    ctx.textAlign = 'right';
+    ctx.textBaseline = 'bottom';
+    ctx.fillText(label, WIDTH - 10, HEIGHT - 3);
+
     ctx.textAlign = 'left';
     ctx.textBaseline = 'alphabetic';
 }
 
 function drawBall() {
+    if (!ballVisible) {
+        return;
+    }
+
+    const isCompleted = localStorage.getItem(COMPLETED_KEY) === '1';
+
+    for (let i = ballTrail.length - 1; i >= 0; i--) {
+        const trailPoint = ballTrail[i];
+        const progress = 1 - i / ballTrail.length;
+        const alpha = progress * 0.35;
+        const radius = ball.radius * (0.45 + progress * 0.45);
+
+        ctx.globalAlpha = alpha;
+        ctx.beginPath();
+        ctx.arc(trailPoint.x, trailPoint.y, radius, 0, Math.PI * 2);
+        ctx.fillStyle = isCompleted ? '#ffd700' : '#ffffff';
+        ctx.fill();
+    }
+
+    ctx.globalAlpha = 1;
+
     ctx.beginPath();
     ctx.arc(ball.x, ball.y, ball.radius, 0, Math.PI * 2);
-    ctx.fillStyle = '#ffffff';
+    ctx.fillStyle = isCompleted ? '#ffd700' : '#ffffff';
     ctx.fill();
-    ctx.closePath();
 }
 
 function getTextColorForBlock(hexColor) {
@@ -491,16 +734,7 @@ function getBlockImage(color) {
 }
 
 function getSpecialBlockIcon(type) {
-    const source = type === 'bomb' ? BOMB_ICON_SRC : FREEZE_ICON_SRC;
-
-    if (specialBlockIconCache.has(type)) {
-    return specialBlockIconCache.get(type);
-    }
-
-    const image = new Image();
-    image.src = source;
-    specialBlockIconCache.set(type, image);
-    return image;
+    return type === 'bomb' ? bombIconImage : freezeIconImage;
 }
 
 function getBlockTextImage(block) {
@@ -517,7 +751,7 @@ function getBlockTextImage(block) {
 
     const textCtx = textCanvas.getContext('2d');
     textCtx.fillStyle = getTextColorForBlock(block.color);
-    textCtx.font = '12px Arial';
+    textCtx.font = `${12 * UI_SCALE}px Arial`;
     textCtx.textAlign = 'center';
     textCtx.textBaseline = 'middle';
     textCtx.fillText(label, BLOCK_WIDTH / 2, BLOCK_HEIGHT / 2);
@@ -526,20 +760,89 @@ function getBlockTextImage(block) {
     return textCanvas;
 }
 
-function drawBlock(block, x, y) {
-    ctx.drawImage(getBlockImage(block.color), x, y, BLOCK_WIDTH, BLOCK_HEIGHT);
+function getRenderedBlockImage(block) {
+    const type = block.isBomb ? 'bomb' : block.isFreeze ? 'freeze' : 'normal';
+    const label = String(block.points);
+    const key = `${type}|${block.color}|${label}`;
+
+    if (blockTextImageCache.has(key)) {
+        return blockTextImageCache.get(key);
+    }
+
+    const baseImage = getBlockImage(block.color);
+
+    if (!baseImage.complete) {
+        return baseImage;
+    }
+
+    const renderedCanvas = document.createElement('canvas');
+    renderedCanvas.width = BLOCK_WIDTH;
+    renderedCanvas.height = BLOCK_HEIGHT;
+
+    const renderedCtx = renderedCanvas.getContext('2d');
+
+    renderedCtx.drawImage(baseImage, 0, 0, BLOCK_WIDTH, BLOCK_HEIGHT);
 
     if (block.isBomb) {
-    ctx.drawImage(getSpecialBlockIcon('bomb'), x, y, BLOCK_WIDTH, BLOCK_HEIGHT);
-    return;
+        const icon = getSpecialBlockIcon('bomb');
+
+        if (icon.complete) {
+            renderedCtx.drawImage(icon, 0, 0, BLOCK_WIDTH, BLOCK_HEIGHT);
+        }
+    } else if (block.isFreeze) {
+        const icon = getSpecialBlockIcon('freeze');
+
+        if (icon.complete) {
+            renderedCtx.drawImage(icon, 0, 0, BLOCK_WIDTH, BLOCK_HEIGHT);
+        }
+    } else {
+        renderedCtx.fillStyle = getTextColorForBlock(block.color);
+        renderedCtx.font = `${12 * UI_SCALE}px Arial`;
+        renderedCtx.textAlign = 'center';
+        renderedCtx.textBaseline = 'middle';
+        renderedCtx.fillText(label, BLOCK_WIDTH / 2, BLOCK_HEIGHT / 2);
     }
 
-    if (block.isFreeze) {
-    ctx.drawImage(getSpecialBlockIcon('freeze'), x, y, BLOCK_WIDTH, BLOCK_HEIGHT);
-    return;
+    blockTextImageCache.set(key, renderedCanvas);
+    return renderedCanvas;
+}
+
+function drawBlock(block, x, y) {
+    ctx.drawImage(getRenderedBlockImage(block), x, y, BLOCK_WIDTH, BLOCK_HEIGHT);
+
+    const isCompleted = localStorage.getItem(COMPLETED_KEY) === '1';
+
+    if (!isCompleted || block.isBomb || block.isFreeze) {
+        return;
     }
 
-    ctx.drawImage(getBlockTextImage(block), x, y, BLOCK_WIDTH, BLOCK_HEIGHT);
+    const time = shineTime;
+
+    const duration = 1.5 + block.shineDuration * 0.45;
+    const interval = 3.5 + block.shineInterval * 5.5;
+    const phase = block.shinePhase * interval;
+    const cycle = (time + phase) % interval;
+
+    if (cycle > duration) {
+        return;
+    }
+
+    const progress = cycle / duration;
+    const shineX = x - BLOCK_WIDTH + progress * BLOCK_WIDTH * 2;
+
+    ctx.save();
+    ctx.beginPath();
+    ctx.rect(x, y, BLOCK_WIDTH, BLOCK_HEIGHT);
+    ctx.clip();
+
+    ctx.globalAlpha = 0.18;
+    ctx.translate(shineX, y);
+    ctx.rotate(-0.5);
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(0, 0, BLOCK_WIDTH * 0.18, BLOCK_HEIGHT * 1.6);
+
+    ctx.restore();
+    ctx.globalAlpha = 1;
 }
 
 function drawPendingTopRow() {
@@ -581,30 +884,33 @@ function drawBlocks() {
 function addExplosion(row, col, color, power = 1) {
     const cx = BLOCK_GAP + col * (BLOCK_WIDTH + BLOCK_GAP) + BLOCK_WIDTH / 2;
     const cy = BLOCK_TOP + row * (BLOCK_HEIGHT + BLOCK_GAP) + BLOCK_HEIGHT / 2;
-    const particleCount = Math.round(10 * power);
+    const particleCount = Math.round(18 * power);
 
     for (let i = 0; i < particleCount; i++) {
-    const angle = (Math.PI * 2 * i) / particleCount;
-    const speed = (1.4 + Math.random() * 1.8) * power;
+        const angle = Math.random() * Math.PI * 2;
+        const speed = (0.6 + Math.random() * 2.1) * power;
+        const lifeSpeed = 0.006 + Math.random() * 0.009;
 
-    particles.push({
-        x: cx,
-        y: cy,
-        vx: Math.cos(angle) * speed,
-        vy: Math.sin(angle) * speed,
-        size: (1.5 + Math.random() * 2.2) * power,
-        life: 1,
-        color: color
-    });
+        particles.push({
+            x: cx + (Math.random() - 0.5) * BLOCK_WIDTH * 0.35,
+            y: cy + (Math.random() - 0.5) * BLOCK_HEIGHT * 0.35,
+            vx: Math.cos(angle) * speed,
+            vy: Math.sin(angle) * speed,
+            size: (1.4 + Math.random() * 3.4) * power,
+            life: 1,
+            lifeSpeed: lifeSpeed,
+            color: color
+        });
     }
 }
 
 function updateExplosions(deltaScale) {
     particles = particles.filter(particle => {
-    particle.x += particle.vx * deltaScale;
-    particle.y += particle.vy * deltaScale;
-    particle.life -= 0.035 * deltaScale;
-    return particle.life > 0;
+        particle.x += particle.vx * deltaScale;
+        particle.y += particle.vy * deltaScale;
+        particle.vy += 0.015 * deltaScale;
+        particle.life -= particle.lifeSpeed * deltaScale;
+        return particle.life > 0;
     });
 }
 
@@ -661,10 +967,107 @@ function getScoreRequiredToCompleteGame() {
     return totalScoreNeeded;
 }
 
+function explodeAllBlocksForWin() {
+    winExplosionQueue = [];
+
+    if (pendingTopRow) {
+        const pendingY = getPendingRowY();
+
+        for (let col = 0; col < GRID_COLUMNS; col++) {
+            const block = pendingTopRow[col];
+
+            if (!block || !block.active) {
+                continue;
+            }
+
+            winExplosionQueue.push({
+                block: block,
+                row: -1,
+                col: col,
+                color: block.color,
+                delayMs: Math.random() * 2500,
+                y: pendingY
+            });
+        }
+    }
+
+    for (let row = 0; row < blocks.length; row++) {
+        const y = getBlockY(row);
+
+        for (let col = 0; col < GRID_COLUMNS; col++) {
+            const block = blocks[row][col];
+
+            if (!block || !block.active) {
+                continue;
+            }
+
+            winExplosionQueue.push({
+                block: block,
+                row: row,
+                col: col,
+                color: block.color,
+                delayMs: Math.random() * 2500,
+                y: y
+            });
+        }
+    }
+
+    winExplosionQueue.sort((a, b) => a.delay - b.delay);
+}
+
+function updateWinExplosions() {
+    const elapsedMs = performance.now() - winExplosionStartedAt;
+
+    for (const item of winExplosionQueue) {
+        if (item.delayMs > elapsedMs) {
+            continue;
+        }
+
+        if (!item.block.active) {
+            continue;
+        }
+
+        item.block.active = false;
+        addExplosion(item.row, item.col, item.color, 1.4);
+    }
+
+    winExplosionQueue = winExplosionQueue.filter(item => item.block.active);
+}
+
+function addBallWinExplosion() {
+    const particleCount = 80;
+
+    for (let i = 0; i < particleCount; i++) {
+        const angle = Math.random() * Math.PI * 2;
+        const speed = 1.2 + Math.random() * 4.2;
+        const lifeSpeed = 0.004 + Math.random() * 0.008;
+
+        particles.push({
+            x: ball.x,
+            y: ball.y,
+            vx: Math.cos(angle) * speed,
+            vy: Math.sin(angle) * speed,
+            size: 2.0 + Math.random() * 5.0,
+            life: 1,
+            lifeSpeed: lifeSpeed,
+            color: '#ffd700'
+        });
+    }
+}
+
 function checkWinCondition() {
+    if (gameWon) {
+        return;
+    }
+
     if (score >= getScoreRequiredToCompleteGame()) {
-    gameWon = true;
-    
+        gameWon = true;
+        winAnimationTime = 0;
+        winExplosionStartedAt = performance.now();
+        localStorage.setItem(COMPLETED_KEY, '1');
+        ballVisible = false;
+        addBallWinExplosion();
+        explodeAllBlocksForWin();
     }
 }
 
@@ -697,27 +1100,38 @@ function drawGameOver() {
     ctx.fillRect(0, 0, WIDTH, HEIGHT);
 
     ctx.fillStyle = '#ffffff';
-    ctx.font = '32px Arial';
+    ctx.font = '72px Arial';
     ctx.textAlign = 'center';
     ctx.fillText('Game Over', WIDTH / 2, HEIGHT / 2 - 18);
 
     ctx.font = '18px Arial';
-    ctx.fillText('Click or Space to restart', WIDTH / 2, HEIGHT / 2 + 18);
+    ctx.fillText(' ', WIDTH / 2, HEIGHT / 2 + 18);
     ctx.textAlign = 'left';
 }
 
 function drawWin() {
-    ctx.fillStyle = 'rgba(0, 0, 0, 0.65)';
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.55)';
     ctx.fillRect(0, 0, WIDTH, HEIGHT);
 
-    ctx.fillStyle = '#ffffff';
-    ctx.font = '32px Arial';
-    ctx.textAlign = 'center';
-    ctx.fillText('You Win', WIDTH / 2, HEIGHT / 2 - 18);
+    const pulse = Math.sin(winAnimationTime * 8) * 0.5 + 0.5;
+    const glow = 12 + pulse * 18;
 
+    ctx.save();
+
+    ctx.shadowColor = '#ffd700';
+    ctx.shadowBlur = glow;
+    ctx.fillStyle = '#ffd700';
+    ctx.font = '120px Arial';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText('WIN', WIDTH / 2, HEIGHT / 2 - 30);
+
+    ctx.shadowBlur = 0;
+    ctx.fillStyle = '#ffffff';
     ctx.font = '18px Arial';
-    ctx.fillText('Click or Space to restart', WIDTH / 2, HEIGHT / 2 + 18);
-    ctx.textAlign = 'left';
+    ctx.fillText('Press restart to play again', WIDTH / 2, HEIGHT / 2 + 24);
+
+    ctx.restore();
 }
 
 function collideWithWalls() {
@@ -731,9 +1145,9 @@ function collideWithWalls() {
     ball.dx = -Math.abs(ball.dx);
     }
 
-    if (ball.y - ball.radius <= 0) {
-    ball.y = ball.radius;
-    ball.dy = Math.abs(ball.dy);
+    if (ball.y - ball.radius <= PLAY_TOP) {
+        ball.y = PLAY_TOP + ball.radius;
+        ball.dy = Math.abs(ball.dy);
     }
 
     if (ball.y - ball.radius > HEIGHT) {
@@ -850,6 +1264,56 @@ function destroyBlock(row, col) {
 
     block.active = false;
     return block.points;
+}
+
+function useSaveButton() {
+    if (!gameStarted || gameOver || gameWon || isPaused) {
+        return;
+    }
+
+    if (score < SAVE_COST) {
+        return;
+    }
+
+    const safeZoneTop = paddle.y - BLOCK_HEIGHT * SAFE_ZONE_BLOCKS;
+    const safeZoneBottom = paddle.y;
+
+    let destroyedAnyBlock = false;
+
+    for (let row = 0; row < blocks.length; row++) {
+        const y = getBlockY(row);
+
+        if (y + BLOCK_HEIGHT < safeZoneTop || y > safeZoneBottom) {
+            continue;
+        }
+
+        for (let col = 0; col < GRID_COLUMNS; col++) {
+            const block = blocks[row][col];
+
+            if (!block || !block.active) {
+                continue;
+            }
+
+            block.active = false;
+            destroyedAnyBlock = true;
+            addExplosion(row, col, block.color, 0.9);
+        }
+    }
+
+    if (!destroyedAnyBlock) {
+        return;
+    }
+
+    score = Math.max(0, score - SAVE_COST);
+    scoreElement.textContent = score;
+
+    const newLevel = getLevelByScore(score);
+    level = newLevel;
+    ball.speed = getSpeedByLevel(level);
+    paddle.width = getPaddleWidthByLevel(level);
+    paddle.x = Math.max(0, Math.min(WIDTH - paddle.width, paddle.x));
+    setBallDirection(ball.dx, ball.dy);
+    levelElement.textContent = level;
 }
 
 function explodeBomb(centerRow, centerCol) {
@@ -1082,50 +1546,299 @@ function updateTimedRows() {
     }
 }
 
-function updateBallPhysics(deltaScale) {
-    setBallDirection(ball.dx, ball.dy);
-
+function updateBallPhysics(deltaSeconds) {
     ball.prevX = ball.x;
     ball.prevY = ball.y;
 
-    ball.x += ball.dx * deltaScale;
-    ball.y += ball.dy * deltaScale;
+    ball.x += ball.dx * deltaSeconds;
+    ball.y += ball.dy * deltaSeconds;
 
     collideWithWalls();
     collideWithPaddle();
     collideWithBlocks();
+
+    ballTrail.unshift({ x: ball.x, y: ball.y });
+
+    if (ballTrail.length > BALL_TRAIL_LENGTH) {
+        ballTrail.pop();
+    }
 }
 
-function update(deltaScale) {
+function update(deltaSeconds) {
+    if (!gameStarted || gameOver || isPaused) {
+        if (gameOver && freezeStoppedAt === 0) {
+            freezeStoppedAt = performance.now();
+        }
+        return;
+    }
+
+    if (gameWon) {
+        if (freezeStoppedAt === 0) {
+            freezeStoppedAt = performance.now();
+        }
+
+        winAnimationTime += deltaSeconds;
+        updateWinExplosions();
+        updateExplosions(deltaSeconds * 60);
+        return;
+    }
+
+    runElapsedTime += deltaSeconds * 1000;
+    shineTime += deltaSeconds;
+
+    updatePaddleByKeyboard(deltaSeconds * 60);
+    updateTimedRows();
+    updateExplosions(deltaSeconds * 60);
+
+    const maxStepSeconds = 1 / 120;
+    const steps = Math.max(1, Math.ceil(deltaSeconds / maxStepSeconds));
+    const stepSeconds = deltaSeconds / steps;
+
+    for (let step = 0; step < steps; step++) {
+        updateBallPhysics(stepSeconds);
+
+        if (gameOver || gameWon) {
+            break;
+        }
+    }
+}
+
+function drawFPS() {
+    ctx.save();
+
+    ctx.fillStyle = 'rgb(0, 255, 0)';
+    ctx.font = '10px Arial';
+    ctx.textAlign = 'right';
+    ctx.textBaseline = 'bottom';
+
+    ctx.fillText(`FPS: ${fps}`, WIDTH -10, HEIGHT - 15);
+
+    ctx.restore();
+}
+
+function drawWinProgress() {
+    const requiredScore = getScoreRequiredToCompleteGame();
+    const progress = Math.max(0, Math.min(1, score / requiredScore));
+
+    const barX = 0;
+    const barY = 0;
+    const barWidth = WIDTH;
+    const barHeight = 10;
+
+    const colorStops = [
+        [0,    [0, 0, 255]],     // blue
+        [0.25, [0, 255, 0]],     // green
+        [0.5,  [255, 255, 0]],   // yellow
+        [0.75, [255, 127, 0]],   // orange
+        [0.95, [255, 0, 0]]      // red almost at the end
+    ];
+
+    let fillColor = 'rgb(0,0,255)';
+
+    for (let i = 0; i < colorStops.length - 1; i++) {
+        const [p1, c1] = colorStops[i];
+        const [p2, c2] = colorStops[i + 1];
+
+        if (progress >= p1 && progress <= p2) {
+            const t = (progress - p1) / (p2 - p1);
+            fillColor = interpolateColor(c1, c2, t);
+            break;
+        }
+
+        if (progress > 0.95) {
+            fillColor = 'rgb(255,0,0)';
+        }
+    }
+
+    const stripeWidth = 16;
+    const offset = (shineTime * 20) % stripeWidth;
+
+    ctx.save();
+
+    ctx.fillStyle = '#3f3f46';
+    ctx.fillRect(barX, barY, barWidth, barHeight);
+
+    ctx.beginPath();
+    ctx.rect(barX, barY, barWidth, barHeight);
+    ctx.clip();
+
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.22)';
+    ctx.lineWidth = 4;
+
+    for (let x = -barHeight - stripeWidth; x < barWidth + stripeWidth; x += stripeWidth) {
+        ctx.beginPath();
+        ctx.moveTo(x + offset, barY + barHeight);
+        ctx.lineTo(x + offset + barHeight, barY);
+        ctx.stroke();
+    }
+
+    ctx.restore();
+
+    ctx.save();
+
+    ctx.beginPath();
+    ctx.rect(barX, barY, barWidth * progress, barHeight);
+    ctx.clip();
+
+    ctx.fillStyle = fillColor;
+    ctx.fillRect(barX, barY, barWidth, barHeight);
+
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.35)';
+    ctx.lineWidth = 4;
+
+    for (let x = -barHeight - stripeWidth; x < barWidth + stripeWidth; x += stripeWidth) {
+        ctx.beginPath();
+        ctx.moveTo(x + offset, barY + barHeight);
+        ctx.lineTo(x + offset + barHeight, barY);
+        ctx.stroke();
+    }
+
+    ctx.restore();
+
+    ctx.save();
+    ctx.lineWidth = 2;
+    ctx.strokeStyle = '#000000';
+    ctx.strokeRect(barX + 1, barY + 1, barWidth - 2, barHeight - 2);
+    ctx.restore();
+}
+
+function lerpColor(a, b, t) {
+    return Math.round(a + (b - a) * t);
+}
+
+function interpolateColor(c1, c2, t) {
+    return `rgb(${lerpColor(c1[0], c2[0], t)}, ${lerpColor(c1[1], c2[1], t)}, ${lerpColor(c1[2], c2[2], t)})`;
+}
+
+function drawStartButton() {
+    if (gameStarted && !gameOver && !gameWon) {
+        return;
+    }
+
+    ctx.save();
+
+    const x = startButton.x;
+    const y = startButton.y;
+
+    ctx.globalAlpha = 0.5;
+    ctx.beginPath();
+    ctx.arc(x, y, startButton.radius, 0, Math.PI * 2);
+    ctx.fillStyle = '#000000';
+    ctx.fill();
+
+    ctx.globalAlpha = 1;
+    ctx.strokeStyle = '#ffffff';
+    ctx.lineWidth = 2;
+    ctx.stroke();
+
+    ctx.fillStyle = '#ffffff';
+    ctx.font = `${16 * UI_SCALE}px Arial`;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+
+    let label = 'START';
+
+    if (gameOver) {
+        label = 'RESTART';
+    }
+
+    if (gameWon) {
+        label = 'RESTART';
+    }
+
+    ctx.fillText(label, x, y);
+
+    ctx.restore();
+}
+
+function drawSaveButton() {
     if (!gameStarted || gameOver || gameWon || isPaused) {
         return;
     }
 
-    updatePaddleByKeyboard(deltaScale);
-    updateTimedRows();
-    updateExplosions(deltaScale);
+    const canSave = score >= SAVE_COST;
 
-    const steps = Math.max(1, Math.ceil(deltaScale / MAX_PHYSICS_STEP));
-    const stepScale = deltaScale / steps;
+    ctx.save();
 
-    for (let step = 0; step < steps; step++) {
-    updateBallPhysics(stepScale);
+    ctx.globalAlpha = canSave ? 0.82 : 0.32;
+    ctx.fillStyle = '#000000';
+    ctx.fillRect(
+        saveButton.x - saveButton.width / 2,
+        saveButton.y - saveButton.height / 2,
+        saveButton.width,
+        saveButton.height
+    );
 
-    if (gameOver || gameWon) {
-        break;
+    ctx.globalAlpha = canSave ? 1 : 0.45;
+    ctx.strokeStyle = canSave ? '#ffffff' : '#9ca3af';
+    ctx.lineWidth = 1;
+    ctx.strokeRect(
+        saveButton.x - saveButton.width / 2,
+        saveButton.y - saveButton.height / 2,
+        saveButton.width,
+        saveButton.height
+    );
+
+    ctx.fillStyle = canSave ? '#ffffff' : '#9ca3af';
+    ctx.font = '10px Arial';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText('SALVATION', saveButton.x, saveButton.y);
+
+    ctx.restore();
+}
+
+function drawPauseOverlay() {
+    if (!isPaused || gameOver || gameWon) {
+        return;
     }
-    }
+
+    ctx.save();
+
+    // dark overlay
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
+    ctx.fillRect(0, 0, WIDTH, HEIGHT);
+
+    // button
+    const x = startButton.x;
+    const y = startButton.y;
+
+    ctx.globalAlpha = 0.6;
+    ctx.beginPath();
+    ctx.arc(x, y, startButton.radius, 0, Math.PI * 2);
+    ctx.fillStyle = '#000000';
+    ctx.fill();
+
+    ctx.globalAlpha = 1;
+    ctx.strokeStyle = '#ffffff';
+    ctx.lineWidth = 2;
+    ctx.stroke();
+
+    ctx.fillStyle = '#ffffff';
+    ctx.font = `${16 * UI_SCALE}px Arial`;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText('RESUME', x, y);
+
+    ctx.restore();
 }
 
 function draw() {
     ctx.clearRect(0, 0, WIDTH, HEIGHT);
+    
     drawPendingTopRow();
     drawBlocks();
     drawExplosions();
+    drawSafeZone();
     drawDangerLine();
     drawPaddle();
-    drawFreezeTimer();
+    drawSaveButton();
     drawBall();
+    drawFreezeTimer();
+    drawFPS();
+    drawWinProgress();
+    drawRunTimer();
+    drawPauseOverlay();
 
     if (gameOver) {
     drawGameOver();
@@ -1134,14 +1847,25 @@ function draw() {
     if (gameWon) {
     drawWin();
     }
+
+    drawStartButton();
 }
 
 function loop(timestamp) {
     const deltaTime = timestamp - lastFrameTime;
-    const deltaScale = Math.min(deltaTime / 16.6667, 2);
+    const deltaSeconds = Math.min(deltaTime / 1000, 0.033);
     lastFrameTime = timestamp;
 
-    update(deltaScale);
+    fpsCounter++;
+    fpsTime += deltaTime;
+
+    if (fpsTime >= 1000) {
+        fps = fpsCounter;
+        fpsCounter = 0;
+        fpsTime = 0;
+    }
+
+    update(deltaSeconds);
     draw();
     requestAnimationFrame(loop);
 }
