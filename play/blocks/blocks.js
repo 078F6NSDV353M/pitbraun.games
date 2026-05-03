@@ -646,7 +646,7 @@ function drawRunTimer() {
         `${String(hundredths).padStart(2, '0')}`;
 
     ctx.fillStyle = 'rgb(0, 255, 0)';
-    ctx.font = '10px Arial';
+    ctx.font = '18px Arial';
     ctx.textAlign = 'right';
     ctx.textBaseline = 'bottom';
     ctx.fillText(label, WIDTH - 10, HEIGHT - 3);
@@ -1607,11 +1607,11 @@ function drawFPS() {
     ctx.save();
 
     ctx.fillStyle = 'rgb(0, 255, 0)';
-    ctx.font = '10px Arial';
+    ctx.font = '18px Arial';
     ctx.textAlign = 'right';
     ctx.textBaseline = 'bottom';
 
-    ctx.fillText(`FPS: ${fps}`, WIDTH -10, HEIGHT - 15);
+    ctx.fillText(`FPS: ${fps}`, WIDTH -10, HEIGHT - 22);
 
     ctx.restore();
 }
