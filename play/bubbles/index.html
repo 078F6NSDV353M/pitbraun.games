@@ -200,7 +200,7 @@
     </div>
 
     <div class="hint hidden">Тап — выстрел. Свайп внизу или тап по цвету — быстрая смена цвета.</div>
-    <div class="buildVersion">Build V47</div>
+    <div class="buildVersion">Build V46</div>
   </div>
 
   <script>
@@ -235,9 +235,6 @@
     let wheelRadius = 0;
     let isChoosingColor = false;
     let audioContext = null;
-    let musicTimer = null;
-    let musicStep = 0;
-    let musicGain = null;
 
     const player = {
       x: 0,
@@ -287,11 +284,6 @@
 
     async function startGame() {
       initAudio();
-
-      if (audioContext && audioContext.state === 'suspended') {
-        await audioContext.resume();
-      }
-      startNeonLoop();
       playClickSound();
       resetGame();
       running = true;
@@ -301,7 +293,6 @@
     }
 
     function gameOver() {
-      stopNeonLoop();
       running = false;
       menuPanel.classList.remove('hidden');
       menuPanel.querySelector('h1').textContent = 'GAME OVER';
@@ -773,68 +764,6 @@
     function playWrongHitSound() {
       playTone(240, 0.08, 'sawtooth', 0.07, 180);
       playTone(140, 0.12, 'triangle', 0.045, 110);
-    }
-
-    function startNeonLoop() {
-      if (!audioContext || musicTimer) return;
-
-      if (!musicGain) {
-        musicGain = audioContext.createGain();
-        musicGain.gain.value = 0.16;
-        musicGain.connect(audioContext.destination);
-      }
-
-      musicStep = 0;
-      playNeonStep();
-      musicTimer = setInterval(playNeonStep, 620);
-    }
-
-    function stopNeonLoop() {
-      if (!musicTimer) return;
-      clearInterval(musicTimer);
-      musicTimer = null;
-    }
-
-    function playNeonStep() {
-      if (!audioContext || !musicGain) return;
-
-      const notes = [220, 277.18, 329.63, 415.3, 329.63, 277.18, 246.94, 329.63];
-      const bassNotes = [55, 55, 69.3, 69.3, 82.41, 82.41, 61.74, 61.74];
-      const note = notes[musicStep % notes.length];
-      const bass = bassNotes[musicStep % bassNotes.length];
-      const now = audioContext.currentTime;
-
-      playMusicTone(note, 0.42, 'sine', 0.24, note * 0.995, now);
-
-      if (musicStep % 2 === 0) {
-        playMusicTone(bass, 0.58, 'triangle', 0.18, bass * 0.98, now);
-      }
-
-      musicStep += 1;
-    }
-
-    function playMusicTone(frequency, duration, type, volume, slideTo, startTime) {
-      const oscillator = audioContext.createOscillator();
-      const gain = audioContext.createGain();
-      const filter = audioContext.createBiquadFilter();
-
-      oscillator.type = type;
-      oscillator.frequency.setValueAtTime(frequency, startTime);
-      oscillator.frequency.exponentialRampToValueAtTime(slideTo, startTime + duration);
-
-      filter.type = 'lowpass';
-      filter.frequency.setValueAtTime(1200, startTime);
-
-      gain.gain.setValueAtTime(0.001, startTime);
-      gain.gain.linearRampToValueAtTime(volume, startTime + 0.035);
-      gain.gain.exponentialRampToValueAtTime(0.001, startTime + duration);
-
-      oscillator.connect(filter);
-      filter.connect(gain);
-      gain.connect(musicGain);
-
-      oscillator.start(startTime);
-      oscillator.stop(startTime + duration);
     }
 
     function handlePointerDown(event) {
